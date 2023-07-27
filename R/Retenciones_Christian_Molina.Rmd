@@ -1,0 +1,360 @@
+---
+title: "Práctica en R: Estudio de las retenciones en Valencia"
+output: html_document
+---
+
+### Asignatura de "Programación de sistema: R" - Master Big Data - UPV
+
+# Cesar Ferri- Beatriz de la Blanca
+
+El objetivo de esta práctica es utilizar las capacidades de R en el tratamiento de los datos para realizar un estudio de las congestiones de tráfico de Valencia. Los datos que utilizaremos se han obtenido del portal de datos abiertos del Ayuntamiento de Valencia.
+
+# Carga y estructura de los datos
+
+Cargamos los datos.
+
+Utilizaremos la función **objects()** para averiguar los nombres de las variables cargadas;
+
+```{r}
+load("totr.Rdata")
+objects()
+```
+
+Durante toda la práctica utilizaremos el nombre "dat" para referirnos a los datos
+
+```{r}
+dat <- tot
+```
+
+Le echamos un vistazo a los datos:
+
+```{r}
+dim(dat)
+```
+
+Es decir, tenemos más de 1,9 millones de observaciones de 8 variables.
+
+```{r}
+str(dat)
+head(dat)
+```
+
+Las variables de nuestros datos;
+
+-   Definen la fecha y hora; "any", "mes", "dia", "hora", "minut"
+-   Indican una localizacion; "id", "carrer"
+-   Muestran el estado del tráfico; "estat"
+
+------------------------------------------------------------------------
+
+Transformamos a numéricos
+
+```{r}
+dat$any<-as.numeric(dat$any)
+dat$mes<-as.numeric(dat$mes)
+dat$dia<-as.numeric(dat$dia)
+dat$hora<-as.numeric(dat$hora)
+dat$minut<-as.numeric(dat$minut)
+dat$estat<-as.numeric(dat$estat)
+dat$id<-as.numeric(dat$id)
+str(dat)
+```
+
+mostramos Valores que toman las variables temporales:
+
+```{r}
+unique(dat$any)
+unique(dat$mes)
+unique(dat$dia)
+```
+
+Nos indican que tenemos datos sobre los días de febrero, marzo y abril de 2015 (aunque no necesariamente todos).
+
+```{r}
+sort(unique(dat$hora))
+unique(dat$min)
+```
+
+Nos inclinan a pensar que tenemos datos de cada cuarto de hora (no necesariamente todos los días ni todas las horas).
+
+------------------------------------------------------------------------
+
+Sobre las variables que identifican una localización;
+
+La variable "id" es un identificador de la calle, cuyo nombre se guarda en "carrer". Entonces, deben coincidir el número de "id" distintos con el número de casos "carrer" diferentes;
+
+```{r}
+# sanity-check
+nids <- length(unique(dat$id))
+ncarrers <- length(unique(dat$carrer))
+stopifnot(nids == ncarrers)   
+nids
+```
+
+```{r}
+head(sort(unique(dat$carrer)),10)
+tail(sort(unique(dat$carrer)),10)
+```
+
+Vemos que algunas calles tienen de nombre "". Trataremos estos casos en la fase de limpieza.
+
+# Limpieza de los datos
+
+Realizaremos la limpieza de los datos en primer lugar. De esta manera los datos que haya que formatear ya estarán limpios y se trabajará más eficientemente al tratar menos volumen de datos.
+
+Veamos los valores que toma la variable estado;
+
+```{r}
+unique(dat$estat)
+```
+
+Sin embargo, desde el portal de datos abiertos sólo indican la leyenda de estos cuatro estados;
+
+0 -\> FLUIDO\
+1 -\> DENSO\
+2 -\> CONGESTIONADO\
+3 -\> CORTADO
+
+Que aparecen con estas frecuencias:
+
+```{r}
+sum(is.na(dat$estat))
+table(dat$estat)
+```
+
+Puesto que el resto de los estados son desconocidos para nosotros, vamos a juntarlo en valor **estat=4** para indicar ESTADO DESCONOCIDO para después eliminar sus registros.
+
+```{r}
+dat[which(dat$estat>3),"estat"] <- 4
+#dat[is.na(dat$estat),"estat"] <- 4
+table(dat$estat)
+```
+
+Obsérvese que todavía nos han quedado registros con estado = "". Vamos a examinar qué son.
+
+```{r}
+head(dat[is.na(dat$estat),c("dia","hora","minut","estat", "id", "carrer")])
+```
+
+Son registros que no tienen información del estado ni de la calle. También los incluimos en el estado 4 - DESCONOCIDO
+
+```{r}
+#dat[which(dat$estat==""),"estat"] <- 4
+dat[is.na(dat$estat),"estat"] <- 4
+table(dat$estat)
+```
+
+Finalmente eliminamos del dataset los estados desconocidos:
+
+```{r}
+d_limpio <- subset(dat, dat$estat < 4)
+dat <- d_limpio
+table(dat$estat)
+```
+
+------------------------------------------------------------------------
+
+Recordemos que antes de efectuar la limpieza de la variable estado teníamos calles con valores "". Nos planteamos la posibilidad de que esos valores desconocidos sigan apareciendo;
+
+```{r}
+head(sort(unique(dat$carrer)))
+head(sort(unique(dat$id)))
+```
+
+Como vemos, junto con la limpieza de los estados anómalos también se han eliminado los datos desconocidos de las calles.
+
+```{r}
+100*(nrow(tot) - nrow(dat))/nrow(tot)  # Porcentaje de registros eliminados en la limpieza
+```
+
+> Durante la fase de limpieza se han eliminado un 8% de los registros (aproximadamente 150.000)
+
+# Formateo de los datos
+
+En esta sección vamos a crear variables nuevas que nos servirán para más adelante;
+
+-   Crearemos una cadena con la fecha formateada
+-   Crearemos una variable factor del estado
+-   Crearemos una variable booleana "atasco" que incluye la interpretación de lo que es "atascado" o "congestionado"
+
+Creamos una nueva variable con la fecha formateada como "año-mes-dia";
+
+```{r}
+fecha<-paste(as.character(dat[,1]),as.character(dat[,2]),as.character(dat[,3]),sep="-")
+dat$fecha<-fecha
+min(fecha)
+max(fecha)
+head(dat)
+```
+
+Creamos una variable factor sobre el estado. Obsérvese que no incluimos el estado 4 - DESCONOCIDO porque éste ya está eliminado de los datos.
+
+```{r}
+dat$festat <- factor(dat$estat, levels = 0:3, labels = c("Fluido", "Denso","Congestionado","Cortado"))
+head(dat)
+```
+
+Vamos a definir una variable booleana "atasco" que utilizaremos para definir cuando consideramos que la calle está atascada o congestionada. En el enunciado de la práctica indica que atasco es TRUE cuando el estado es 1 - Denso o 2 - Congestionado. Es decir;
+
+| "estat"           | "atasco"        |
+|-------------------|-----------------|
+| 0 - Fluido        | 0 - No atascado |
+| 1 - Denso         | 1 - Atascado    |
+| 2 - Congestionado | 1 - Atascado    |
+| 3 - Cortado       | 0 - No atascado |
+
+Sin embargo, podríamos escoger otras interpretaciones, como por ejemplo;
+
+-   segunda interpretación; "atasco" = 1 si "estat" es 1 - Denso, 2 - Congestionado o 3 - Cortado
+-   tercera interpretación; "atasco" = 1 si "estat" es 2 - Congestionado o 3 - Cortado
+-   etc.
+
+Durante el desarrollo de este estudio *nos limitaremos a la primera interpretación.*
+
+```{r}
+atasco = rep(-1,length(dat$estat))
+atasco [which(dat$estat==1)]<-1
+atasco [which(dat$estat==2)]<-1
+atasco [which(dat$estat==3)]<-0  # NOTA: En esta interpretacion los dias cortados no serán atascos
+atasco [which(dat$estat==0)]<-0  
+dat$atasco<-atasco
+table(dat$atasco) # Si hay algún valor "-1" es que lo hemos hecho mal
+table(dat$estat)
+```
+
+# Ejercicios
+
+Considerando siempre "dat\$atasco" para medir los atascos.
+
+1.  ¿Cuál fue el peor día ?(día con más atascos). Se puede utilizar Date\$yday, aunque no es necesario.
+
+Respuesta: El día con mayor numero de atascos fue el 12 de febrero de 2015.
+
+```{r}
+#as.POSIXlt("2015-1-5")$yday # 4
+names(which.max(by(dat[,c("atasco")],dat$fecha,sum)))
+```
+
+2.  ¿Cuál es el peor tramo? (Tramo con más proporción de atascos).
+
+Respuesta: El peor tramo es el tramo de Peris y valero hacia Ausias March.
+
+```{r}
+names(which.max(by(dat[,c("atasco")],dat$carrer,sum)))
+```
+
+3.  ¿Cuál es peor y el mejor día de la semana? . Se puede utilizar Date\$wday
+
+Respuesta: Los peores dias de la semana en concentración de atascos son los Jueves y los mejores los Domingos.
+
+```{r}
+dps<-names(which.max(by(dat[,c("atasco")],as.POSIXlt(dat$fecha)$wday,sum)))
+dms<-names(which.min(by(dat[,c("atasco")],as.POSIXlt(dat$fecha)$wday,sum)))
+c(dps,dms)#Domingos serian los mejores dias y jueves son los peores dias de la semana.
+```
+
+4.  ¿Las fallas incremetan los atascos?. Considerar Fallas del 16 al 19 de marzo (incluidos)
+
+Respuesta: A nivel numerico vemos que quedarían afectadas 49 calles aumentando la media de atascos.
+
+```{r}
+#Condicion de que sea fallas
+condicionFallas <- dat[,c("fecha")] >= '2015-3-16' & dat[,c("fecha")] <= '2015-3-19'
+#Fallas
+solo_dias_sin_fallas <- dat[!condicionFallas,]
+#Dias Completos
+todos_los_dias <- dat[order(dat$carrer),]
+#Ordenamos los datos
+sin_fallas_sort <- solo_dias_sin_fallas[order(solo_dias_sin_fallas$carrer),]
+todos_los_dias_sort <- todos_los_dias[order(todos_los_dias$carrer),]
+#Media de los atascos sin contemplar fallas
+atascos_calles_sinfallas = names(by(sin_fallas_sort[,c("atasco")],sin_fallas_sort$carrer,mean))
+atascosinfallas = c(by(sin_fallas_sort[,c("atasco")],sin_fallas_sort$carrer,mean))
+data_atascos_sinfallas <- data.frame(calles = atascos_calles_sinfallas, atascos = atascosinfallas)
+#Media de los atascos contemplando fallas
+atascos_calles <- names(by(todos_los_dias_sort[,c("atasco")],todos_los_dias_sort$carrer,mean))
+atascoscalles <- c(by(todos_los_dias_sort[,c("atasco")],todos_los_dias_sort$carrer,mean))
+data_atascos_total <- data.frame(calles = atascos_calles, media_atascos = atascoscalles)
+#Diferencia de atascos
+dif_atascos_calles <- data.frame(calles = atascos_calles, media_atascos = c(as.numeric(data_atascos_total[,2]) - as.numeric(data_atascos_sinfallas[,2])))
+#Cuantas calles hay afectadas?
+calles_no_afectadas <- nrow(dif_atascos_calles[dif_atascos_calles[,2] <= 0,])
+calles_afectadas_en_fallas <- nrow(dif_atascos_calles[dif_atascos_calles[,2] > 0,])
+#Solución
+calles_afectadas_en_fallas
+calles_no_afectadas
+```
+
+5.  Realizar un estudio sobre los periodos más frecuentes de atasco considerando horas y días de la semana.
+
+Respuesta: Vemos que los periodos más frecuentes de atascos coinciden con las horas puntas, entrada y salida del trabajo, la hora de comer y salidas y retornos a los domicilios los fines de semana.
+
+Parece ser que cuando mas atascos se producen serían los martes a primeras horas de la mañana lo cual parece razonable ya que se podría considerar como primer dia de la semana para todo los trabajadores (hay gente que los lunes tienen el dia libre por trabajar domingos) y los sabados al medio día y noche coincidirá con horas de salir a comer algun restaurante o salir de fiesta.
+
+```{r}
+diasem <-as.POSIXlt(as.Date(dat[,9]), "%Y-%m-%d")$wday
+dat$diasem <- diasem
+xhoradia<-by(dat[,c("atasco")],list(dat$hora,dat$diasem),sum)
+xhora<-by(dat[,"atasco"],dat$hora,sum)
+mhoradia<-matrix(xhoradia,24,7)
+#numero medio de atascos por hora
+plot(xhora,lty=1,type="l", ylab="nº atascos", xlab="horas",xlim=c(0,24),main="Atascos por hora en la Ciudad de Valencia",col="red")
+#numero medio de atascos por cada dia de la semana
+plot(mhoradia[,1],lty=1,type="l", ylab="nº atascos", xlab="horas", col=1,xlim=c(0,24),ylim=c(0,250),main="Atascos por dia de la semana en la Ciudad de Valencia")
+
+for ( i in 2:7)
+{
+lines(mhoradia[,i], lty=i,col=i,xlim=c(0,24))          
+}
+legend('left',c("Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"), col=c(1:7), lty=1:7,cex=0.8)
+
+```
+
+6.  Realiza un mapa (o apliación shiny) que permita conocer las zonas más problemáticas de la ciudad (Opcional)
+
+```{r}
+#library(stringr)
+#datos_valencia <- read.csv("estado_trafico.csv",sep = ";")
+#datos_valencia <- datos_valencia[!is.na(datos_valencia$idtramo),]
+#datos_valencia_raw_coor <- sub("\\[\\[","[",datos_valencia$coordinates)
+#datos_valencia_raw_coor <- sub("\\]\\]","]",datos_valencia_raw_coor)
+#datos_valencia_raw_id <- datos_valencia$idtramo
+#datos_valencia_2 <- data.frame(datos_valencia$idtramo)
+#datos_valencia$coordinates[1]
+#datos_valencia$coordinates <- sub("\\[\\[","",datos_valencia$coordinates)
+#datos_valencia$coordinates[1]
+#datos_valencia$coordinates <- sub("\\]\\]","",datos_valencia$coordinates)
+#datos_valencia$coordinates[1]
+#datos_valencia$coordinates <- gsub("\\],\\[",",",datos_valencia$coordinates)
+#datos_valencia$coordinates[1]
+#datos_valencia$coordinates <- strsplit(datos_valencia$coordinates,",")
+#datos_valencia$coordinates[1]
+#options(digits=9)
+#coord_numericas <- as.numeric(unlist(datos_valencia$coordinates))
+#recorrido <- length(coord_numericas)
+#prueba200 <- data.frame(matrix(ncol = 3,nrow = 0))
+#colnames(prueba200) <- c("id","X","Y")
+#prueba300 <- data.frame(matrix(ncol = 3,nrow = 0))
+#colnames(prueba300) <- c("id","X","Y")
+#for (i in 1:nrow(datos_valencia))
+#{
+  #contador vectores
+#  contadorvec <- str_count(datos_valencia_raw_coor[i],"\\[")
+#  contadorcoor <- contadorvec * 2
+#  contadorcoor
+  #formato
+#  formato <- c("X","Y")
+#  estructura <- rep(formato,contadorcoor/2)
+#  estructura <- c("ID",estructura)
+#  resultante <- split(c(datos_valencia_raw_id[i],coord_numericas[1:contadorcoor]),estructura)
+#  print(contadorcoor)
+#    for (j in 1:(contadorcoor/2))
+#    {
+#      prueba200[j,1] <- unlist(resultante$ID)
+#      prueba200[j,2] <- unlist(resultante$X[1])
+#      prueba200[j,3] <- unlist(resultante$Y[1])
+#    }
+  #print(resultante[i])
+#}
+#prueba300 <- unique(prueba300)
+```
