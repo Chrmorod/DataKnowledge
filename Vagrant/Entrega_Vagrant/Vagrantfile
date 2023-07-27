@@ -1,0 +1,68 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Autores: Christian Molina Rodríguez / Pau Ros Bou
+# Versión: Noviembre 2022
+Vagrant.configure("2") do |config|
+  #Caja bajada para servidor y cliente
+  config.vm.box = "centos/7"
+  #Variables genericas
+  nombre_servidor = 'sl1'
+  maxClients=2
+  ip_DNS = ' '#'10.0.2.50'#por ejemplo
+  #-->Parte del Servidor invitado:
+  config.vm.define nombre_servidor do |sl1|
+    ip_server = '192.168.56.30'
+    sl1.vm.network "private_network", ip: ip_server
+    sl1.vm.network "forwarded_port", guest: 80, host: 8080, auto_correct: true
+  #Virtual box proveedor
+    sl1.vm.provider "virtualbox" do |v|
+        v.gui = false# Si queremos iniciar la consola
+        v.name = "SL1"
+        v.cpus = 2
+        v.memory = 2048
+    end # sl1 provider
+  #Configuración de red del servidor
+    sl1.vm.provision "network-config", type: "shell" do |s|
+       s.name = "network-config01"
+       s.path = "scripts/network-config.sh"
+       s.args = [nombre_servidor, ip_server, ip_DNS]
+    end# Fin configuración de red del servidor
+  #Instalación servidor ipa-server.
+    sl1.vm.provision "ipa-server-install", type: "shell" do |s|
+      s.name = "ipa-server-install02"
+      s.path = "scripts/ipa-server-install.sh" 
+      s.args = nombre_servidor
+    end # fin instalación ipa-server
+    # PARTE OPCIONAL: añadiendo usuarios
+    #sl1.vm.provision "ipa-server-addusers", type: "shell" do |s|
+	    # Añadir usuarios al servidor IPA 
+	#    s.args = "scripts/usuarios.csv"
+    #end #fin de añadiendo usuarios
+  end # sl1
+  ##-->Fin de parte del Servidor invitado
+
+  #-->Parte de los clientes invitados:
+  listClients=1..maxClients
+  (listClients).each do |i|
+
+    config.vm.define "cl#{i}" do |cl|
+      cl.vm.provider "virtualbox" do |v|
+         v.name = "CL#{i}"
+         v.memory = 1024
+         v.cpus = 1
+      end #cli provider
+      cl.vm.network "private_network", ip: "192.168.56.4#{i}"
+      cl.vm.provision "network-config", type: "shell" do |s|
+        s.name = "network-configc#{i}"
+        s.path = "scripts/network-config.sh"
+        s.args = ["cl#{i}","192.168.56.4#{i}",ip_DNS]
+      end# Configuración de la red del cliente
+      cl.vm.provision "ipa-client-install", type: "shell" do |s|
+        s.name = "ipa-client-installc#{i}"
+	    s.path = "scripts/ipa-client-install.sh" 
+        s.args = "cl#{i}"
+      end# Instalación del cliente IPA
+    end #cli
+  end#-->Fin de parte de los clientes invitados (bucle)
+end#--> Fin config
