@@ -1,4 +1,5 @@
 # Exercise about Motor Vehicle Collisions Person
+### Authors: Christian Molina / Pau Ros
 
 ## Data Ingestion
 You can view the data in this link: https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Person/f55k-p6yu 
