@@ -13,7 +13,7 @@ Upload scheme and drag & drop the mentioned scheme.
 
 Now start zookepper, broker in Kafka and control center:
 ```
-docker-compose up zookeeper broker control-center 
+docker-compose start zookeeper broker control-center 
 ```
 Next step press play to Nifi and it will collect the json data and send it to Kafka.
 
