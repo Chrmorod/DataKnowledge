@@ -23,7 +23,9 @@ Next step press play to Nifi and it will collect the json data and send it to Ka
 ## Data Processing 
 We can get data about topic (consumer), in this case "CrashMotorVehiclesPeople" retrieve data and Spark process this information and send to new topic "Crash_transformed".
 
-You can review the compiled code, specially the java class "CrashProcessor.java". 
+You can review the compiled code, specially the java class "CrashProcessor.java" and you have to view different messages in the intellij console:
+
+![NiFi Scheme Presentation](./imgs/RunCrashProcessor.png)
 
 ## Data Storage
 At this stage, We can configurate elastic search sink json and change the topic that we want to use, in this case "Crash_transformed".
