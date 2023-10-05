@@ -25,10 +25,11 @@ We can get data about topic (consumer), in this case "CrashMotorVehiclesPeople" 
 
 You can review the compiled code, specially the java class "CrashProcessor.java" and you have to view different messages in the intellij console:
 
-![NiFi Scheme Presentation](./imgs/RunCrashProcessor.png)
+![CrashProcessor running](./imgs/RunCrashProcessor.png)
 
 ## Data Storage
 At this stage, We can configurate elastic search sink json and change the topic that we want to use, in this case "Crash_transformed".
+![Visualization topi crashtransformed](./imgs/control_center_crash_transformed.png)
 
 Now start kafka connect, elastic search and kibana. 
 ```
