@@ -18,7 +18,7 @@ docker-compose start zookeeper broker control-center
 ```
 Next step press play to Nifi and it will collect the json data and send it to Kafka.
 
-![NiFi Scheme Presentation](../imgs/scheme_nifi.png)
+![NiFi Scheme Presentation](imgs/scheme_nifi.png)
 
 ## Data Processing 
 We can get data about topic (consumer), in this case "CrashMotorVehiclesPeople" retrieve data and Spark process this information and send to new topic "Crash_transformed".
