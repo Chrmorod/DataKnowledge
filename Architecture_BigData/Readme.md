@@ -41,6 +41,17 @@ In this part, We'll have to load the elastic search sink json in the control cen
 The visualizations should look something like this:
 ![Visualization topi crashtransformed](./imgs/Crashes_Dashboard_final.png)
 
+## Data Analysis
+Run Jupiter:
+```
+docker-compose start jupyter
+```
+Connecting to the node:
+    Run on command line: ```docker exec -it docker_jupyter_1 bash```
+    On docker container get token: ```jupyter server list```
+    Copy the token and just use it in the login screen
+![Visualization topi crashtransformed](./imgs/EDA_Crashes.png)
+
 
 
 
