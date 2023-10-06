@@ -4,7 +4,7 @@
 ## Data Ingestion
 You can view the data in this link: https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Person/f55k-p6yu 
 
-First one, We'll run Apache NIFI with following scheme: NIFI_CrashVehiclePeople.xml.
+First of all, We'll run Apache NIFI with following scheme: NIFI_CrashVehiclePeople.xml.
 
 Start the NiFi service:
 ```
@@ -35,8 +35,11 @@ Now start kafka connect, elastic search and kibana.
 ```
 docker-compose start kafka-connect elasticsearch kibana
 ```
-In this part, We'll have to load the elastic search sink json in the control center connectors part. After We can visit kibana and create the Dashboard about crashes 
+In this part, We'll have to load the elastic search sink json in the control center connectors part. After We can visit kibana and create the Dashboard about crashes.
+
 ## Data Visualization
+The visualizations should look something like this:
+![Visualization topi crashtransformed](./imgs/Crashes_Dashboard_final.png)
 
 
 
