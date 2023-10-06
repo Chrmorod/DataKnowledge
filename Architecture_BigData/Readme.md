@@ -50,7 +50,7 @@ Connecting to the node:
     Run on command line: ```docker exec -it docker_jupyter_1 bash```
     On docker container get token: ```jupyter server list```
     Copy the token and just use it in the login screen
-![Visualization topi crashtransformed](./imgs/EDA_Crashes.png)
+![Visualization topi crashtransformed](./imgs/EDA_CRASHES.png)
 
 
 
